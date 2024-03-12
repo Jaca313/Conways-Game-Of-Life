@@ -9,6 +9,7 @@ target/
 lib_managed/
 src_managed/
 project/boot/
+project/target/
 project/plugins/project/
 project/local-plugins.sbt
 .history
@@ -23,7 +24,7 @@ project/local-plugins.sbt
 classes/
 
 #scala 3
-.tasty
+*.tasty
 
 # idea
 .idea
