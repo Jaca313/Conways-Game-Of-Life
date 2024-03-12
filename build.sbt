@@ -4,6 +4,6 @@ ThisBuild / scalaVersion := "3.1.3"
 
 lazy val root = (project in file("."))
   .settings(
-    name := "unnamed" ,
+    name := "Conways Game Of Life" ,
     libraryDependencies += "org.creativescala" %% "doodle" % "0.21.0"
   )
