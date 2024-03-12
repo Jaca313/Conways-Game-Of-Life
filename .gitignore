@@ -22,6 +22,9 @@ project/local-plugins.sbt
 .settings
 classes/
 
+#scala 3
+.tasty
+
 # idea
 .idea
 .idea_modules
