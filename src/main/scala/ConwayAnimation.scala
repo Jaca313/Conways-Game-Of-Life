@@ -1,54 +1,58 @@
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.instances.all.*
 import doodle.core.*
 import doodle.core.format.Gif
-import doodle.effect.*
-import doodle.image.*
-import doodle.image.syntax.all.*
 import doodle.interact.syntax.all.*
-import doodle.java2d.effect.*
+import doodle.java2d.effect.GifEncoder
 import doodle.java2d.{Picture, *}
 import doodle.syntax.all.*
 import fs2.Stream
 
-import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.*
+import java.util.concurrent.TimeUnit
 import scala.util.Random
-
 
 object ConwayAnimation {
 
-  import scala.concurrent.duration.*
-
-  val screenHeight = 1200
-  val screenWidth = 1200
-  val resolution = 30
-
-  val cellCountX: Int = screenHeight / resolution
-  val cellCountY: Int = screenWidth / resolution
-
+  val screenHeight = 1200 //Size of Window
+  val screenWidth = 1200 //Size of Window
+  val resolution = 30 //Size of Cell
   val filledPercentage: Int = 70 //How much of Black vs White in random Grid (0-100)
-  val cell =
+  val frameTime: Long = 50 //Time between simulation/animation frames
+  val fileFrameCount: Int = 20 //How many frames of animation to write to gif
+
+  val cellCountX: Int = screenHeight / resolution //Get Cell Count on X axis
+  val cellCountY: Int = screenWidth / resolution //Get Cell Count on Y axis
+
+  //Cell Picture
+  val cell: Picture[Unit] =
     Picture
       .square(resolution)
       .strokeWidth(3)
       .strokeColor(Color.grey)
 
-  val frame =
-    Frame.default.withTitle("Conways Game of Life Doodle").withSize(screenWidth, screenHeight).withBackground(Color.white)
+  //Fill Starting Grid Randomly
+  var currentGrid: Array[Array[Int]] = randomGrid()
 
-  var currentGrid: Array[Array[Int]] = randomizeGrid()
+  //Create Frame(Canvas/Window) to write to
+  val frame: Frame  = Frame.default
+    .withTitle("Conways Game of Life Doodle")
+    .withSize(screenWidth, screenHeight)
+    .withBackground(Color.white)
 
-  def randomizeGrid(): Array[Array[Int]] =
-    //Create Array
-    val grid1: Array[Array[Int]] = Array.ofDim[Int](cellCountX, cellCountY)
-    //Fill with random Black and White
+  //Generated Grid filled randomly with percentage $filledPercentage
+  def randomGrid(): Array[Array[Int]] ={
+    //Create Grid Array
+    val newGrid: Array[Array[Int]] = Array.ofDim[Int](cellCountX, cellCountY)
+    //Fill with random Black-1 and White-0 by percentage Black/White
     for (i <- 0 until cellCountX; j <- 0 until cellCountY) {
-      grid1(i)(j) = if(Random.between(0, 100) > filledPercentage) 1 else 0
+      newGrid(i)(j) = if(Random.between(0, 100) > filledPercentage) 1 else 0
     }
-    grid1
+    newGrid
+  }
 
+  //Calculates number of neighbors of a cell
+  //Using wraparound
   def calculateNeighbor(x:Int,y:Int): Int = {
     var sum = 0
     for (i <- -1 until 2; j <- -1 until 2) {
@@ -60,6 +64,8 @@ object ConwayAnimation {
     sum
   }
 
+  //Calculate new grid based on $currentGrid according to rules at
+  //https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
   def calculateNewGrid(): Array[Array[Int]] ={
     val newGrid: Array[Array[Int]] = Array.ofDim[Int](cellCountX, cellCountY)
     for (i <- 0 until cellCountX; j <- 0 until cellCountY) {
@@ -72,9 +78,9 @@ object ConwayAnimation {
     newGrid
   }
 
-  def grid(): Picture[Unit] =
+  //Update,draw and output a picture of the state of the grid
+  def grid(): Picture[Unit] = {
     currentGrid = calculateNewGrid()
-
     val origin = Picture.circle(1).at(screenWidth, screenHeight)
     var vertices = origin
     for (i <- 0 until cellCountX; j <- 0 until cellCountY) {
@@ -84,22 +90,21 @@ object ConwayAnimation {
         .on(vertices)
     }
     vertices
+  }
 
-
-  val animation: Stream[IO, Picture[Unit]] =
+  val animation: Stream[IO, Picture[Unit]] = {
     Stream(1).repeat
-      .debounce[IO](50.millis)
-      .scan((1, 0)) { (state, _) =>
-        val (inc, size) = state
-        (1,1)
-      }
-      .map { case (_, s) => grid() }
+      .debounce[IO](Duration(frameTime, TimeUnit.MILLISECONDS))
+      .map { s => grid() }
+  }
 
-  def go() =
+  //Animation output to frame/window
+  def go(): Unit =
     animation.animateFrames(frame)
 
-  def write() =
-    animation.take(20).write[Gif]("conway.gif", frame)
+  //Animation output to file
+  def write(): Unit =
+    animation.take(fileFrameCount).write[Gif]("conway.gif", frame)
 
 
 
