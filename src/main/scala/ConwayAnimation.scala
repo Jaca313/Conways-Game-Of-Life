@@ -7,8 +7,8 @@ import doodle.effect.*
 import doodle.image.*
 import doodle.image.syntax.all.*
 import doodle.interact.syntax.all.*
-import doodle.java2d.{Picture, *}
 import doodle.java2d.effect.*
+import doodle.java2d.{Picture, *}
 import doodle.syntax.all.*
 import fs2.Stream
 
@@ -16,16 +16,8 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.*
 import scala.util.Random
 
+
 object ConwayAnimation {
-  import cats.effect.IO
-  import cats.effect.unsafe.implicits.global
-  import cats.instances.all.*
-  import doodle.core.*
-  import doodle.core.format.Gif
-  import doodle.interact.syntax.all.*
-  import doodle.java2d.effect.*
-  import doodle.syntax.all.*
-  import fs2.Stream
 
   import scala.concurrent.duration.*
 
