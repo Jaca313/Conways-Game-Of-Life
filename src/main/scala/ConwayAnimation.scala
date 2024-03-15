@@ -60,33 +60,31 @@ final case class ConwayAnimation(
   def withWriteToGifFrameCount(fileFrameCount: Int): ConwayAnimation =
     this.copy(fileFrameCount = fileFrameCount)
 
-
-
-  //Cell Picture
+  /**Cell Picture*/
   private def cell(size: Int): Picture[Unit] =
     Picture
       .square(size)
       .strokeWidth(3)
       .strokeColor(Color.grey)
 
-  //Fill Starting Grid Randomly
+  /**Fill Starting Grid Randomly*/
   var currentGrid: Array[Array[Int]] = randomGrid()
 //  private var currentGrid: Array[Array[Int]] = loadGrid("conway.txt")
 
-  //Create Frame(Canvas/Window) to write to
+  /**Create Frame(Canvas/Window) to write to*/
   private val frame: Frame  = Frame.default
     .withTitle("Conways Game of Life Doodle")
     .withSize(screenWidth, screenHeight)
     .withBackground(Color.white)
 
-  //Calculate Cell Resolution to match screen size and cell count
+  /**Calculate Cell Resolution to match screen size and cell count*/
   private def calculateResolution(): Int = {
     val resX = screenWidth / cellCountX
     val resY = screenHeight / cellCountY
     if(resX > resY) resY else resX
   }
 
-  //Generated Grid filled randomly with percentage $filledPercentage
+  /**Generated Grid filled randomly with percentage $filledPercentage*/
   private def randomGrid(): Array[Array[Int]] ={
     //Create Grid Array
     val newGrid: Array[Array[Int]] = Array.ofDim[Int](cellCountX, cellCountY)
@@ -97,6 +95,7 @@ final case class ConwayAnimation(
     newGrid
   }
 
+  /**Load Grid froma a file*/
   private def loadGrid(filename: String): Array[Array[Int]] = {
     val bufferedSource = Source.fromFile(filename)
     val input: Array[String] = bufferedSource.getLines.toArray
@@ -120,8 +119,8 @@ final case class ConwayAnimation(
     reversedColumnGrid
   }
 
-  //Calculates number of neighbors of a cell
-  //Using wraparound
+  /**Calculates number of neighbors of a cell
+    Using wraparound*/
   private def calculateNeighbor(x:Int,y:Int): Int = {
     var sum = 0
     for (i <- -1 until 2; j <- -1 until 2) {
@@ -133,8 +132,9 @@ final case class ConwayAnimation(
     sum
   }
 
-  //Calculate new grid based on $currentGrid according to rules at
-  //https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
+  /**Calculate new grid based on $currentGrid
+   * according to rules at
+   * https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life*/
   private def calculateNewGrid(): Array[Array[Int]] ={
     val newGrid: Array[Array[Int]] = Array.ofDim[Int](cellCountX, cellCountY)
     for (i <- 0 until cellCountX; j <- 0 until cellCountY) {
@@ -147,7 +147,7 @@ final case class ConwayAnimation(
     newGrid
   }
 
-  //Update,draw and output a picture of the state of the grid
+  /**Update,draw and output a picture of the state of the grid*/
   private def getGridPictureAndUpdateGrid(): Picture[Unit] = {
     currentGrid = calculateNewGrid()
     val origin = Picture.circle(1).at(screenWidth, screenHeight)
@@ -161,21 +161,19 @@ final case class ConwayAnimation(
     vertices
   }
 
+  /** Animation Stream of Grid Pitures*/
   private val animation: Stream[IO, Picture[Unit]] = {
     Stream(1).repeat
       .debounce[IO](Duration(frameTime, TimeUnit.MILLISECONDS))
       .map { s => getGridPictureAndUpdateGrid() }
   }
 
-  //Animation output to frame/window
+  /**Animation output to frame/window*/
   def go(): Unit =
     animation.animateFrames(frame)
 
-  //Animation output to file
+  /**Animation output to file*/
   def write(): Unit =
     animation.take(fileFrameCount).write[Gif]("conway.gif", frame)
-
-
-
 
 }
