@@ -13,6 +13,14 @@ import scala.io.Source
 import scala.util.Random
 import java.util.concurrent.TimeUnit
 
+enum BorderRules:
+  case FIXEDEDGEDEAD
+  case WRAPAROUND
+
+enum InputMode:
+  case LOADFROMFILE
+  case RANDOM
+
 object ConwayAnimation {
   val default: ConwayAnimation =
     ConwayAnimation(
@@ -23,19 +31,27 @@ object ConwayAnimation {
       resolution = 80,
       filledPercentage = 70,
       frameTime = 250,
-      fileFrameCount = 20
+      fileFrameCount = 20,
+      fileName = "conway.txt",
+      inputMode = InputMode.RANDOM,
+      borderRules = BorderRules.WRAPAROUND,
+      currentGrid = Array.fill(10,10)(0)
     )
 }
 
 final case class ConwayAnimation(
-    private val screenWidth: Int,       /**Size of Window*/
-    private val screenHeight: Int,      /**Size of Window*/
-    private var cellCountX: Int,        /**Cell Count on X axis*/
-    private var cellCountY: Int,        /**Cell Count on Y axis*/
-    private var resolution: Int,        /**Size of Cell*/
-    private val filledPercentage: Int,  /**How much of Black vs White in random Grid (0-100)*/
-    private val frameTime: Long,        /**Time between simulation/animation frames*/
-    private val fileFrameCount: Int,    /**How many frames of animation to write to gif*/
+    private val screenWidth: Int,                 /**Size of Window*/
+    private val screenHeight: Int,                /**Size of Window*/
+    private var cellCountX: Int,                  /**Cell Count on X axis*/
+    private var cellCountY: Int,                  /**Cell Count on Y axis*/
+    private var resolution: Int,                  /**Size of Cell*/
+    private val filledPercentage: Int,            /**How much of Black vs White in random Grid (0-100)*/
+    private val frameTime: Long,                  /**Time between simulation/animation frames*/
+    private val fileFrameCount: Int,              /**How many frames of animation to write to gif*/
+    private val fileName: String,                 /**What file to load from*/
+    private val inputMode: InputMode,             /**Enum where to source initial board*/
+    private val borderRules: BorderRules,         /**Enum how to handle edge of board*/
+    private var currentGrid: Array[Array[Int]]
 ) {
 
   /**Size the window*/
@@ -46,7 +62,8 @@ final case class ConwayAnimation(
   /**Use an X by Y grid of cells when not loading from a file*/
   def withCellDimensions(cellCountX: Int,cellCountY: Int): ConwayAnimation =
     val cp = this.copy(cellCountX = cellCountX,cellCountY = cellCountY)
-    cp.copy(resolution = cp.calculateResolution())
+    val cp2 = cp.copy(resolution = cp.calculateResolution())
+    cp2.copy(currentGrid = Array.fill(cellCountX,cellCountY)(0))
 
   /**Fill with this percentage when filling grid randomly*/
   def withFilledCellsPercentage(filledPercentage : Int): ConwayAnimation =
@@ -60,16 +77,26 @@ final case class ConwayAnimation(
   def withWriteToGifFrameCount(fileFrameCount: Int): ConwayAnimation =
     this.copy(fileFrameCount = fileFrameCount)
 
+  /**Source input grid as Random*/
+  def withInputRandom(): ConwayAnimation =
+    val cp = this.copy(inputMode = InputMode.RANDOM)
+    cp.copy(currentGrid = cp.randomGrid())
+
+  /**Source input grid from file*/
+  def withInputFromFile(fileName: String): ConwayAnimation =
+    val cp = this.copy(fileName = fileName)
+    cp.copy(currentGrid = cp.loadGrid(cp.fileName))
+
+  /**Change how to handle edges of the board*/
+  def withBorderRule(borderRules: BorderRules): ConwayAnimation =
+    this.copy(borderRules = borderRules)
+
   /**Cell Picture*/
   private def cell(size: Int): Picture[Unit] =
     Picture
       .square(size)
       .strokeWidth(3)
       .strokeColor(Color.grey)
-
-  /**Fill Starting Grid Randomly*/
-  var currentGrid: Array[Array[Int]] = randomGrid()
-//  private var currentGrid: Array[Array[Int]] = loadGrid("conway.txt")
 
   /**Create Frame(Canvas/Window) to write to*/
   private val frame: Frame  = Frame.default
@@ -95,7 +122,7 @@ final case class ConwayAnimation(
     newGrid
   }
 
-  /**Load Grid froma a file*/
+  /**Load Grid from a file*/
   private def loadGrid(filename: String): Array[Array[Int]] = {
     val bufferedSource = Source.fromFile(filename)
     val input: Array[String] = bufferedSource.getLines.toArray
@@ -124,7 +151,7 @@ final case class ConwayAnimation(
   private def calculateNeighbor(x:Int,y:Int): Int = {
     var sum = 0
     for (i <- -1 until 2; j <- -1 until 2) {
-      val row = (x + i + cellCountX)  % cellCountX
+      val row = (x + i + cellCountX) % cellCountX
       val col = (y + j + cellCountY) % cellCountY
       sum += currentGrid(row)(col)
     }
